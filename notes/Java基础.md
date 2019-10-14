@@ -542,3 +542,165 @@ class HelloImpl implements  Hello {
       ```
 
 2. 如果被调用者没有实现接口，而我们还是希望利用动态代理机制，那么可以考虑其他方式。 我们知道 Spring AOP 支持两种模式的动态代理，JDK Proxy 或者 cglib，如果我们选择 cglib 方式，你会发现对接口的依赖被克服了。
+
+## Java中的各种引用
+
+强引用、软引用、弱引用和虚引用
+
+Java对象之间的可达性流转过程
+
+![image-20191014181941880](Java基础/image-20191014181941880.png)
+
+###  软引用
+
+在系统将要发生抛出OutOfMemoryError异常之前，必须要将软引用的对象都清理干净。
+
+```java
+import java.lang.ref.SoftReference;
+
+public class SoftRefDemo {
+    public static void main(String[] args) {
+        SoftReference<String> sr = new SoftReference<>( new String("hello world "));
+        // hello world
+        System.out.println(sr.get());
+    }
+}
+```
+
+软引用用在哪儿呢？
+
+假设我们用1个G的空间缓存了10000篇文章，这10000篇文章所占的内存空间上只有软引用。如果内存空间足够，那么我们可以通过缓存来提升性能，但万一内存空间不够，我们可以依次释放这10000篇文章所占的1G内存，释放后不会影响业务流程，最多就是降低些性能。
+
+JDK文档中提到：软引用适用于对内存敏感的缓存：每个缓存对象都是通过访问的 SoftReference，如果JVM决定需要内存空间，那么它将清除回收部分或全部软引用对应的对象。如果它不需要空间，则SoftReference指示对象保留在堆中，并且可以通过程序代码访问。在这种情况下，当它们被积极使用时，它们被强引用，否则会被软引用。如果清除了软引用，则需要刷新缓存。
+
+实际使用上，要除非缓存的对象非常大，每个数量级为几千字节，才值得考虑使用软引用对象。例如：实现一个文件服务器，它需要定期检索相同的文件，或者需要缓存大型对象图。如果对象很小，必须清除很多对象才能产生影响，那么不建议使用，因为清除软引用对象会增加整个过程的开销。
+
+### 弱引用
+
+**当垃圾收集器工作时，无论当前内存是否足够，都会回收掉只被弱引用关联的对象**。
+
+```java
+    private static void simpleUseWeakRefDemo(){
+        WeakReference<String> sr = new WeakReference<>(new String("hello world " ));
+        // before gc -> hello world 
+        System.out.println("before gc -> " + sr.get());
+
+        // 通知JVM的gc进行垃圾回收
+        System.gc();
+        // after gc -> null
+        System.out.println("after gc -> " + sr.get());
+    }
+```
+
+**WeakHashMap** 为了更方便使用弱引用，Java还提供了WeakHashMap，功能类似HashMap，内部实现是用弱引用对key进行包装，当某个key对象没有任何强引用指向，gc会自动回收key和value对象。
+
+```java
+    private static void weakHashMapDemo(){
+        WeakHashMap<String,String> weakHashMap = new WeakHashMap<>();
+        String key1 = new String("key1");
+        String key2 = new String("key2");
+        String key3 = new String("key3");
+        weakHashMap.put(key1, "value1");
+        weakHashMap.put(key2, "value2");
+        weakHashMap.put(key3, "value3");
+
+        // 使没有任何强引用指向key1
+        key1 = null;
+
+        System.out.println("before gc weakHashMap = " + weakHashMap + " , size=" + weakHashMap.size());
+
+        // 通知JVM的gc进行垃圾回收
+        System.gc();
+        System.out.println("after gc weakHashMap = " + weakHashMap + " , size="+ weakHashMap.size());
+    }
+```
+
+### 引用队列
+
+在构造引用对象时与队列关联，当gc（垃圾回收线程）准备回收一个对象时，如果发现它还仅有软引用(或弱引用，或虚引用)指向它，就会在回收该对象之前，把这个软引用（或弱引用，或虚引用）加入到与之关联的引用队列（ReferenceQueue）中。
+
+**如果一个软引用（或弱引用，或虚引用）对象本身在引用队列中，就说明该引用对象所指向的对象被回收了**，所以要找出所有被回收的对象，只需要遍历引用队列。
+
+如果一个引用在创建的时候，指定了引用队列，那么就需要一个Cleaner线程来处理放入到队列中的对象。
+
+```java
+private static void refQueueDemo() {
+    ReferenceQueue<String> refQueue = new ReferenceQueue<>();
+
+    // 用于检查引用队列中的引用值被回收
+    Thread checkRefQueueThread = new Thread(() -> {
+        while (true) {
+            Reference<? extends String> clearRef = refQueue.poll();
+            if (null != clearRef) {
+                System.out
+                        .println("引用对象被回收, ref = " + clearRef + ", value = " + clearRef.get());
+            }
+        }
+    });
+    checkRefQueueThread.start();
+
+    WeakReference<String> weakRef1 = new WeakReference<>(new String("value1"), refQueue);
+    WeakReference<String> weakRef2 = new WeakReference<>(new String("value2"), refQueue);
+    WeakReference<String> weakRef3 = new WeakReference<>(new String("value3"), refQueue);
+
+    System.out.println("ref1 value = " + weakRef1.get() + ", ref2 value = " + weakRef2.get()
+            + ", ref3 value = " + weakRef3.get());
+
+    System.out.println("开始通知JVM的gc进行垃圾回收");
+    // 通知JVM的gc进行垃圾回收
+    System.gc();
+}
+```
+上面的程序输出为
+
+```
+ref1 value = value1, ref2 value = value2, ref3 value = value3
+开始通知JVM的gc进行垃圾回收
+引用对象被回收, ref = java.lang.ref.WeakReference@48c6cd96, value=null
+引用对象被回收, ref = java.lang.ref.WeakReference@46013afe, value=null
+引用对象被回收, ref = java.lang.ref.WeakReference@423ea6e6, value=null
+```
+
+从构造函数上看，`SoftReference`、`WeakRefreence`和`PhantomReference`都有构造函数支持传入引用队列，从这个角度上来看，他们都支持用户自己定义，在对象被垃圾回收时的行为。
+
+### 虚引用
+
+1. finalize的问题 
+
+- Java语言规范并不保证finalize方法会被及时地执行、而且根本不会保证它们会被执行如果可用内存没有被耗尽，垃圾收集器不会运行，finalize方法也不会被执行。
+- 性能问题 JVM通常在单独的低优先级线程中完成finalize的执行。
+- 对象再生问题 finalize方法中，可将待回收对象赋值给GC Roots可达的对象引用，从而达到对象再生的目的。
+
+针对上面的问题，在JDK1.2之后，提供了PhantomReference类来实现虚引用。
+
+```java
+    private static void simpleUsePhantomRefDemo() throws InterruptedException {
+        Object obj = new Object();
+        ReferenceQueue<Object> refQueue = new ReferenceQueue<>();
+        PhantomReference<Object> phantomRef = new PhantomReference<>(obj, refQueue);
+
+        // null
+        System.out.println(phantomRef.get());
+        // null
+        System.out.println(refQueue.poll());
+
+        obj = null;
+        // 通知JVM的gc进行垃圾回收
+        System.gc();
+
+        // null, 调用phantomRef.get()不管在什么情况下会一直返回null
+        System.out.println(phantomRef.get());
+
+        // 当GC发现了虚引用，GC会将phantomRef插入进我们之前创建时传入的refQueue队列
+        // 注意，此时phantomRef对象，并没有被GC回收，在我们显式地调用refQueue.poll返回phantomRef之后
+        // 当GC第二次发现虚引用，而此时JVM将phantomRef插入到refQueue会插入失败，此时GC才会对phantomRef对象进行回收
+        Thread.sleep(200);
+        Reference<?> pollObj = refQueue.poll();
+        // java.lang.ref.PhantomReference@1540e19d
+        System.out.println(pollObj);
+        if (null != pollObj) {
+            // 进行资源回收的操作
+        }
+    }
+```
+
