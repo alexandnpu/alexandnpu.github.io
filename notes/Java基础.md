@@ -34,7 +34,7 @@
 
    如果返回null，则说明它的父类加载器就是bootstrap类加载器，这是因为其他的类加载器都是使用java编写的，只有bootstrap类加载器是c++编写的，java中的类不能直接引用c++的类。
 
-###扩展类加载器（Extension or Ext Class-Loader）
+### 扩展类加载器（Extension or Ext Class-Loader）
 
 1. 负责加载我们放到 jre/lib/ext/ 目录 下面的 jar 包，这就是所谓的 extension 机制。
 
@@ -44,7 +44,7 @@
    java -Djava.ext.dirs=your_ext_dir HelloWorld
    ```
 
-###应用类加载器（Application or App Class-Loader）
+### 应用类加载器（Application or App Class-Loader）
 
 1. 加载我们最熟悉的 classpath 的内容。
 
@@ -122,6 +122,31 @@
 3. 单一性
    1. 由于父加载器的类型对于子加载器是可见的，所以父加载器中加载过的类型，就不会在子加载器中重复加载。但是注意，类加载器“邻居”间，同一类型仍然可以被加载多次，因为互相并不可见。
 
+## JVM内存区域划分   
+
+![image-20191014124801087](Java基础/image-20191014124801087.png)
+
+这里的主要内存区如上图所以，不在做特别的描述，只把其中的几个我认为比较重要的单独说一下
+
+### 方法区
+
+1. 线程共享的一块内存区域， 用于存储所谓的元(Meta)数据，例如类结构信息，以及对应的运行时常量池、字段、方法代码等。 
+2. java8之前叫做永久代(Permanent Generation)。Oracle JDK 8 中将永久代移除，同时增加了元数据区(Metaspace)。 
+   1. 对于老版本的 Oracle JDK，因为永久代的大小是有限的，并且 JVM 对永久代垃圾回收 (如，常量池回收、卸载不再需要的类型)非常不积极，所以当我们不断添加新类型的时候，永久代出现 OutOfMemoryError 也非常多见，
+   2. 尤其是在运行时存在大量动态类型生成的场合;类似 Intern 字符串缓存占用太多空间，也会导致 OOM问题。
+   3. 对应的异常信息，会标记出来和永久代相关:“java.lang.OutOfMemoryError: PermGen space”。 
+   4. 随着元数据区的引入，方法区内存已经不再那么窘迫，所以相应的 OOM 有所改观，出现 OOM，异常信息则变成了:“java.lang.OutOfMemoryError: Metaspace”。 
+
+### 运行时常量池  
+
+1. 方法区的一部分
+2. 不见包含各种字面量，还有在运行时决定的符号引用
+
+### 本地方法栈
+
+1. 每个线程都会创建一个 
+2. 本地方法栈和 Java 虚拟机栈是在同一块儿区域，这完全取决于技术实现的决定，并未在规范中强制。 
+
 ## 容器中的JVM
 
 其实主要问题就是，
@@ -191,9 +216,9 @@
       --memory-swappiness=0
       ```
 
-##垃圾回收器（GC collector）
+## 垃圾回收器（GC collector）
 
-###分类
+### 分类
 
 1. Serial GC
 
@@ -253,7 +278,7 @@
 
 ### 垃圾收集的原理和基础概念
 
-####基本算法
+#### 基本算法
 
 1. 引用计数算法
 2. 垃圾收集
@@ -337,7 +362,7 @@ java -Xlog:help
 
 ![img](./java/cms)
 
-####可优化的点
+#### 可优化的点
 
 1. 在重新标记阶段，CMS会扫描整个堆
    1. 为什么要扫描正在堆？包括新生代呢？

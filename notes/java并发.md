@@ -50,7 +50,7 @@ Happens-Before 规则最初是在一篇叫做**Time, Clocks, and the Ordering of
 
 ### synchronized
 
-####使用规则
+#### 使用规则
 
 > 当修饰静态方法的时候，锁定的是当前类的 Class 对象;
 > 当修饰非静态方法的时候，锁定的是当前实例对象 this。
@@ -74,7 +74,7 @@ Happens-Before 规则最初是在一篇叫做**Time, Clocks, and the Ordering of
 4. 进一步升级为**重量级锁**
    1. 重量级锁，就是上面提到的，在java 6之前提供的，使用操作系统互斥锁实现的锁。
 
-###Java类库中提供的其他锁
+### Java类库中提供的其他锁
 
 ![page7image13166960.png](./java/page7image13166960.png) 
 
@@ -86,7 +86,7 @@ Happens-Before 规则最初是在一篇叫做**Time, Clocks, and the Ordering of
 
 Java 并发包内的各种同步工具，不仅仅是各种 Lock，其他的如Semaphore、CountDownLatch，甚至是早期的FutureTask等，都是基于一种AQS框架。
 
-####synchronized vs ReentrantLock 
+#### synchronized vs ReentrantLock 
 
 1. synchronized 是 Java 内建的同步机制，所以也有人称其为 Intrinsic Locking，它提供了 互斥的语义和可见性，当一个线程已经获取当前锁时，其他试图获取的线程只能等待或者阻 塞在那里。
 
@@ -106,7 +106,7 @@ Java 并发包内的各种同步工具，不仅仅是各种 Lock，其他的如S
 1. 如果说 ReentrantLock 是 synchronized 的替代选择，Condition 则是将 wait、notify、notifyAll 等操作转化为 相应的对象，将复杂而晦涩的同步操作转变为直观可控的对象行为。
 2. 条件变量最为典型的应用场景就是标准类库中的 ArrayBlockingQueue 等。
 
-###StampedLock
+### StampedLock
 
 从上面的锁类型可以看出，StampedLock 竟然也是个单独的类型，从类图结构可以看出它是不支持再入性的语义的， 也就是它不是以持有锁的线程为单位。
 
@@ -251,7 +251,7 @@ private void acquireLock() {
    1. 这个只在lock-free的场景下回出现ABA问题
    2. 针对这种情况，Java 提供了 AtomicStampedReference 工具类，通过为引用建立类似版本号(stamp)的方式，来保证 CAS 的正确性
 
-###AbstractQueuedSynchronizer（AQS）
+### AbstractQueuedSynchronizer（AQS）
 
 1. 为什么需要AQS
 
@@ -314,7 +314,7 @@ LinkedBlockingQueue 内部则是基于锁，并提供了BlockingQueue 的等待�
 
 ![page9image13266304.png](./java/page9image13266304.png) 
 
-###Concurrent容器
+### Concurrent容器
 
 如果我们的应用侧重于 Map 放入或者获 取的速度，而不在乎顺序，大多推荐使用 ConcurrentHashMap，反之则使用 ConcurrentSkipListMap;如果我们需要对大量数据进行非常频繁地修改， ConcurrentSkipListMap 也可能表现出优势。
 
@@ -366,7 +366,7 @@ LinkedBlockingQueue 内部则是基于锁，并提供了BlockingQueue 的等待�
 1. Future vs FutureTask
 2. 对于简单的并行任务，你可以通过“线程池+Future”的方案来 解决;如果任务之间有聚合关系，无论是AND聚合还是OR聚合，都可以通过CompletableFuture来解决;而 批量的并行任务，则可以通过CompletionService来解决
 
-###Executor
+### Executor
 
 Executors 目前提供了 5 种不同的线程池创建配置:
 
@@ -383,7 +383,7 @@ Executors 目前提供了 5 种不同的线程池创建配置:
 
 ![page3image13149328.png](./java/page3image13149328.png) 
 
-###线程池的工作原理
+### 线程池的工作原理
 
 ![page4image13198064.png](./java/page4image13198064.png) 
 
@@ -393,7 +393,7 @@ ThreadFactory 提供上面所需要的创建线程逻辑。
 
 如果任务提交时被拒绝，比如线程池已经处于 SHUTDOWN 状态，需要为其提供处理逻辑，Java 标准库提供了类似ThreadPoolExecutor.AbortPolicy等默认实现，也可以按照实际需求自定义。 
 
-###线程池状态转换图
+### 线程池状态转换图
 
 ![page7image13200144.png](./java/page7image13200144.png) 
 
@@ -489,7 +489,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
 
 可以看到1处的判断条件，增加需要看你增加的是corePoolSize还是corePoolSize以外的线程。
 
-###线程池中线程的销毁时机
+### 线程池中线程的销毁时机
 
 ```java
     private Runnable getTask() {
@@ -539,7 +539,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
 
 主要就是同步和阻塞的理解，同步应该可以看做是从写代码的角度，你再调用这个函数（或者是系统调用）返回之前不能去做其他的事情；而阻塞则可以从操作系统角度来看，就是说当你调用这个函数（或者是系统调用），在它返回之前，你会不会让出CPU，同步阻塞是说，同步调用，在调用成功之前让出了CPU；同步非阻塞是说，同步调用，在调用成功之前没有让出CPU，需要持续不断的去调用该函数，直到成功。
 
-###同步阻塞 
+### 同步阻塞 
 
 <img src="./java/page2image13576352.jpg" style="zoom:50%">
 
@@ -557,7 +557,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
 
 用户线程的读取操作分成两步了，线程先发起select调用，目的是问内核数据准备好了吗? 等内核把数据准备好了，用户线程再发起read调用。在等待数据从内核空间拷贝到用户空间这段时间里，线程还是阻塞的。那为什么叫I/O多路复用呢?因为一次select调用可以向内核查多个数据通道(Channel)的状 态，所以叫多路复用。
 
-###异步非阻塞
+### 异步非阻塞
 
 <img src="./java/page5image13195984.jpg" style="zoom:50%">
 
