@@ -335,7 +335,7 @@ java -Xlog:help
 
 7. 并发重置状态等待下次CMS的触发(CMS-concurrent-reset)，与用户线程同时运行；
 
-![img](https://user-gold-cdn.xitu.io/2019/2/24/1691ed081995f262?imageslim)
+![img](./java/cms)
 
 ####可优化的点
 
