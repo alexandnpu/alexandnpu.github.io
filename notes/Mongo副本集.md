@@ -125,3 +125,127 @@
    2. PRIMARY节点具备投票权利，提供线上读写访问
 3. 状态装换
    1. PRIMARY发生切换，可转换为SECONDARY
+
+### SECONDARY
+
+1. 出现场景
+   1. 主库执行rs.add()添加从节点数据复制正常后的状态
+2. 节点属性
+   1. 通过oplog持续复制元节点的数据更新操作
+   2. 通过配置驱动参数可承担线上业务读请求
+   3. 正常SECONDARY状态节点可参与投票
+3. 状态转换
+   1. 当PRIMARY崩溃或切换后SECONDARY可转换为PRIMARY
+   2. 当源节点oplog写覆盖后可能会转换为RECOVERING
+
+### Arbiter
+
+1. 出现场景
+   1. 主库执行`rs.addArb()`添加节点正常后的状态
+2. 节点属性
+   1. 无需复制源节点的更新操作
+   2. 不承担线上业务的读请求
+   3. 选举中值参与投票不能当选为主
+3. 状态转换
+   1. 无
+   2. 在主库上创建的账号不能同步到这里，需要额外创建账号
+
+### UNKNOWN
+
+1. 出现场景
+   1. 节点添加后的某个短暂的中间状态（节点与其他节点尚未有心跳检测）
+2. 节点属性
+   1. 不提供线上读访问，不参与投票
+3. 状态转换
+   1. 心跳检测正常后会转换为STARTUP2
+
+### DOWN
+
+1. 出现场景
+   1. 副本集其他节点无法连接的节点被认为是DOWN状态
+2. 节点属性
+   1. 不提供线上读访问，不参与投票
+3. 状态转换
+   1. 有可能转换为RECOVERING  或者  SECONDARY
+
+### REMOVED
+
+1. 出现场景
+   1. 节点被副本集剔除后的状态
+2. 节点属性
+   1. 不提供线上读访问，不参与投票，不同步数据
+3. 状态转换
+   1. 通过`rs.add()`或`rs.addArb()`可能转换为RECOVERING或SECONDARY或Arbiter
+
+### Rollback
+
+1. 出现场景
+   1. 主从切换后主库尚有未复制到其他从库的文档
+2. 节点属性
+   1. 不能提供线上读访问
+3. 状态转换
+   1. 当数据节点与其他节点数据一致后，可转换为SECONDARY
+
+### FATAL
+
+1. 出现场景
+   1. 节点触发了一个不可恢复错误（极其罕见，3.0版本后被删除）
+2. 节点属性
+   1. 不提供线上读访问，不参与投票，不同步数据
+3. 状态转换
+   1. 未知，可能需要重启并重新同步数据
+
+## 副本集相关集合
+
+1. oplog.rs
+   1. oplog信息
+2. replset.election
+   1. 投票信息
+3. replset.minvaid
+   1. 记录Secondary节点数据是否处于一致性状态
+4. Replset.oplogTruncateAfterPoint
+   1. 非正常关闭的信息
+5. system.replset
+   1. 副本集配置信息
+6. system.rollback.id
+
+## notes
+
+wiredtiger支持三种压缩模式
+
+* none
+* snappy
+* zlib
+
+1. mongo中字段不存在和字段为null有什么区别
+
+   1. 例子中，我有两行数据
+
+      ```
+      {_id: 1, x: null}
+      {_id: 2}
+      ```
+
+   2. 对于存在性查询，只会返回一个
+
+      ```shell
+      ===> db.test.find({x: {$exists: false}})
+      {_id: 2}
+      ```
+
+   3. 对于null值查询，两个都会查出来
+
+      ```shell
+      ===> db.test.find({x: null})
+      {_id: 1, x: null}
+      {_id: 2}
+      ```
+
+   4. 如果按照type来查询，只会查出值为null的
+
+      ```shell
+      ===> db.test.find({x: {$type: 10}})
+      {_id: 1, x: null}
+      ```
+
+      
