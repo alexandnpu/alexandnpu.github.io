@@ -74,7 +74,7 @@ TCP 使用确认号（Acknowledgment number, ACK）来告知对方下一个期�
 > - **不携带数据**的ACK 包本身不需要被确认，否则就会无穷无尽死循环了
 > - 确认号永远是表示小于此确认号的字节都已经收到
 
-###TCP Flags
+### TCP Flags
 
 ACK、FIN、SYN等都是TCP的标记，TCP定义了一个 8 位的字段用来表示 flags，大部分都只用到了后 6 个，我们通常所说的 SYN、ACK、FIN、RST 其实只是把 flags 对应的 bit 位置为 1 而已，这些标记可以组合使用，比如 SYN+ACK，FIN+ACK 等。
 
@@ -449,7 +449,7 @@ Nagle 攒着包一次发一个，延迟确认收到包不马上回。所以当�
 
 
 
-##常用工具/命令
+## 常用工具/命令
 
 ### telnet
 
