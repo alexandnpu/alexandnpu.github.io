@@ -431,11 +431,50 @@ java -Xlog:help
       –XX:G1OldCSetRegionThresholdPercent
       ```
 
+#### 卡表
+
+在说RSet之前，不得不说的下**卡表**这个概念，其实开标从CMS开始就有的，它的出现，主要目的是为了避免在垃圾回收过程中对真个堆进行扫描。
+
+我们首先想一下，当没有**卡表**时，我们对Young区做垃圾回收，有一些对象可能在Young区内没有再引用的对象，但是这就表示它就是垃圾对象吗？不是的，还有Old区呢，如果一个Old区的对象持有了该对象的引用呢？比如下面这种场景
+
+```java
+public class GCDemo {
+    private static List<String> HOLDERS = new LinkedList<>();
+    
+    public void addContent(String c) {
+        HOLDERS.add(c);
+    }
+}
+```
+
+当在请求时，调用了这里的`addContent`方法，那么对象c就处在Young区，而HOLDERS则处在Old区，那么这个时候对Young区做垃圾回收，是不能直接把c回收的，因为有old区的引用在。
+
+那么要如何才能确认到底有没有old区的对象引用这个Young区的对象呢？如果没有卡表的话，我们需要把整个old区都扫描一遍才能确认到底有没有这种引用关系。这样效率是非常低的，特别是当堆比较大时，这种开销是随着堆的增大而增大的。为了能加快这个过程，**卡表**就诞生了，他就是为了加速判断，到底有没有old区的对象引用Young区的对象。
+
+**卡表**作为一个比特位的集合，每一个比特位可以用来表示年老代的某一区域中的所有对象是否持有新生代对象的引用。由于CMS并没有G1这种Region的概念，所有卡表是只有一个的，也就是old区对应的一个。
+
+1. 卡表中每一项代表old区512字节的内存空间
+2. 卡表只是一个字节数组
+
+有了卡表之后，当确定一个对象的引用关系，而可以先扫描卡表，只有卡表的标记位为1时，才需要扫描给定区域的年老代对象。而卡表位为0的所在区域的年老代对象，一定不包含有对新生代的引用。
+
 #### RSet
 
 1. Remembered Set，用于记录和维护 region 之间对象的引用关系。为什么需要这么做呢?试想，新生代 GC 是复制算法，也就是说，类似对象从 Eden 或者 Survivor 到 to 区域的“移动”，其实是“复制”，本质上是一个新的对象。在这个过程中，需要必须保证老年代到新生代的跨区引用仍然有效。
+2. 逻辑上说每个Region都有一个RSet，RSet记录了其他Region中的对象引用本Region中对象的关系，属于points-into结构（谁引用了我的对象）
+3. card Table则是一种points-out（我引用了谁的对象）的结构，每个Card 覆盖一定范围的Heap（一般为512Bytes）。
+4. G1的RSet是在Card Table的基础上实现的：每个Region会记录下别的Region有指向自己的指针，并标记这些指针分别在哪些Card的范围内。
+5. 这个RSet其实是一个Hash Table，Key是别的Region的起始地址，Value是一个集合，里面的元素是Card Table的Index。
+
+
+
+如下图所示，这里的Rset实际上是属于蓝色Region的
 
 ![page6image22152624.png](./java/page6image22152624.png) 
+
+RSet究竟是怎么辅助GC的呢？在做YGC的时候，只需要选定young generation region的RSet作为根集，这些RSet记录了old->young的跨代引用，避免了扫描整个old generation。 而mixed gc的时候，old generation中记录了old->old的RSet，young->old的引用由扫描全部young generation region得到，这样也不用扫描全部old generation region。所以RSet的引入大大减少了GC的工作量。
+
+从这里可以看到Rset和卡表的功能类似，都是为了加速old区的垃圾回收速度，只不过G1GC把内存分成了很多memory region，所以每个memory region都必须要有一个RSet，这样的话，当针对某一个memory region做垃圾回收时，就可以用它所对应的RSet来确定到底有没有切实有效的对象引用了。
 
 G1 的很多开销都是源自 Remembered Set，例如，它通常约占用 Heap 大小的 20% 或更高，这可是非常可观的比例。并且，我们进行对象复制的时候，因为需要扫描和更改 Card Table 的信息，这个速度影响了复制的速度，进而影响暂停时间。
 
