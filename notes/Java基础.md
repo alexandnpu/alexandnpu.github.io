@@ -470,7 +470,13 @@ public class GCDemo {
 
 如下图所示，这里的Rset实际上是属于蓝色Region的
 
-![page6image22152624.png](./java/page6image22152624.png) 
+![page6image22152624.png](./java/page6image22152624.png)
+
+下图展示了卡表和RSet的关系
+
+![Remembered Sets](Java基础/5aea17be.jpg)
+
+
 
 RSet究竟是怎么辅助GC的呢？在做YGC的时候，只需要选定young generation region的RSet作为根集，这些RSet记录了old->young的跨代引用，避免了扫描整个old generation。 而mixed gc的时候，old generation中记录了old->old的RSet，young->old的引用由扫描全部young generation region得到，这样也不用扫描全部old generation region。所以RSet的引入大大减少了GC的工作量。
 
